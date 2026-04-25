@@ -8,3 +8,5 @@ uploads/
 upgrade/
 languages/
 cache/
+.codex
+index.php
