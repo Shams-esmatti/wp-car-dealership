@@ -1,57 +1,202 @@
 <?php
-/*
-Plugin Name: Car Collection Engine
-Description: Core data structures for the Car Dealership (CPT and Taxonomies).
-Version: 1.0
-Author: Shams
-*/
+/**
+ * Plugin Name: Car Collection Engine
+ * Description: Core data structures for the Car Dealership project.
+ * Version: 1.0.0
+ * Author: Shams
+ */
 
-// 1. Register the "Cars" Post Type
-function create_car_post_type() {
-    register_post_type('cars', array(
-        'labels' => array(
-            'name' => 'Cars',
-            'singular_name' => 'Car',
-            'add_new_item' => 'Add New Car',
-            'edit_item' => 'Edit Car'
+if (! defined('ABSPATH')) {
+    exit;
+}
+
+/**
+ * Returns the supported car meta fields and their sanitization callbacks.
+ *
+ * @return array<string, array<string, string>>
+ */
+function shams_get_car_meta_fields()
+{
+    return array(
+        'car_price' => array(
+            'label'             => 'Car Price ($)',
+            'meta_key'          => '_car_price',
+            'type'              => 'number',
+            'sanitize_callback' => 'absint',
         ),
-        'public'      => true,
-        'has_archive' => true,
-        'menu_icon'   => 'dashicons-performance', // Racing icon
-        'supports'    => array('title', 'editor', 'thumbnail', 'excerpt'),
-        'show_in_rest' => true, // Enables Gutenberg editor
-    ));
-}
-add_action('init', 'create_car_post_type');
-
-// 2. Register "Brands" Taxonomy (Like Categories but for Cars)
-function create_car_taxonomies() {
-    register_taxonomy('brand', 'cars', array(
-        'labels' => array('name' => 'Brands', 'singular_name' => 'Brand'),
-        'hierarchical' => true,
-        'show_in_rest' => true,
-    ));
-}
-add_action('init', 'create_car_taxonomies');
-
-
-// 3. Add Price Meta Box
-function car_add_meta_boxes() {
-    add_meta_box('car_details', 'Car Specifications', 'car_meta_box_html', 'cars', 'side');
-}
-add_action('add_meta_boxes', 'car_add_meta_boxes');
-
-function car_meta_box_html($post) {
-    $price = get_post_meta($post->ID, '_car_price', true);
-    ?>
-    <label for="car_price">Price ($):</label>
-    <input type="number" name="car_price" id="car_price" value="<?php echo esc_attr($price); ?>" style="width:100%;">
-    <?php
+        'car_mileage' => array(
+            'label'             => 'Mileage',
+            'meta_key'          => '_car_mileage',
+            'type'              => 'number',
+            'sanitize_callback' => 'absint',
+        ),
+        'car_fuel_type' => array(
+            'label'             => 'Fuel Type',
+            'meta_key'          => '_car_fuel_type',
+            'type'              => 'text',
+            'sanitize_callback' => 'sanitize_text_field',
+        ),
+    );
 }
 
-function car_save_meta($post_id) {
-    if (array_key_exists('car_price', $_POST)) {
-        update_post_meta($post_id, '_car_price', $_POST['car_price']);
+/**
+ * Registers the Cars custom post type.
+ */
+function shams_register_car_post_type()
+{
+    register_post_type(
+        'cars',
+        array(
+            'labels' => array(
+                'name'               => __('Cars', 'car-collection-engine'),
+                'singular_name'      => __('Car', 'car-collection-engine'),
+                'add_new'            => __('Add New', 'car-collection-engine'),
+                'add_new_item'       => __('Add New Car', 'car-collection-engine'),
+                'edit_item'          => __('Edit Car', 'car-collection-engine'),
+                'new_item'           => __('New Car', 'car-collection-engine'),
+                'view_item'          => __('View Car', 'car-collection-engine'),
+                'search_items'       => __('Search Cars', 'car-collection-engine'),
+                'not_found'          => __('No cars found.', 'car-collection-engine'),
+                'not_found_in_trash' => __('No cars found in Trash.', 'car-collection-engine'),
+                'menu_name'          => __('Cars', 'car-collection-engine'),
+            ),
+            'public'       => true,
+            'has_archive'  => true,
+            'menu_icon'    => 'dashicons-performance',
+            'supports'     => array('title', 'editor', 'thumbnail', 'excerpt'),
+            'rewrite'      => array('slug' => 'cars'),
+            'show_in_rest' => true,
+        )
+    );
+}
+add_action('init', 'shams_register_car_post_type');
+
+/**
+ * Registers the hierarchical Brands taxonomy for cars.
+ */
+function shams_register_car_brand_taxonomy()
+{
+    register_taxonomy(
+        'brand',
+        array('cars'),
+        array(
+            'labels' => array(
+                'name'              => __('Brands', 'car-collection-engine'),
+                'singular_name'     => __('Brand', 'car-collection-engine'),
+                'search_items'      => __('Search Brands', 'car-collection-engine'),
+                'all_items'         => __('All Brands', 'car-collection-engine'),
+                'parent_item'       => __('Parent Brand', 'car-collection-engine'),
+                'parent_item_colon' => __('Parent Brand:', 'car-collection-engine'),
+                'edit_item'         => __('Edit Brand', 'car-collection-engine'),
+                'update_item'       => __('Update Brand', 'car-collection-engine'),
+                'add_new_item'      => __('Add New Brand', 'car-collection-engine'),
+                'new_item_name'     => __('New Brand Name', 'car-collection-engine'),
+                'menu_name'         => __('Brands', 'car-collection-engine'),
+            ),
+            'hierarchical'      => true,
+            'show_admin_column' => true,
+            'show_in_rest'      => true,
+            'rewrite'           => array('slug' => 'brands'),
+        )
+    );
+}
+add_action('init', 'shams_register_car_brand_taxonomy');
+
+/**
+ * Registers the car details meta box for the Cars post type.
+ */
+function shams_add_car_meta_boxes()
+{
+    add_meta_box(
+        'shams_car_details',
+        __('Car Specifications', 'car-collection-engine'),
+        'shams_render_car_meta_box',
+        'cars',
+        'side',
+        'default'
+    );
+}
+add_action('add_meta_boxes', 'shams_add_car_meta_boxes');
+
+/**
+ * Renders the car details meta box fields with nonce protection.
+ *
+ * @param WP_Post $post Current post object.
+ */
+function shams_render_car_meta_box($post)
+{
+    $meta_fields = shams_get_car_meta_fields();
+
+    wp_nonce_field('shams_save_car_meta', 'shams_car_meta_nonce');
+
+    foreach ($meta_fields as $field_name => $field_config) {
+        $value = get_post_meta($post->ID, $field_config['meta_key'], true);
+        ?>
+        <p>
+            <label for="<?php echo esc_attr($field_name); ?>">
+                <?php echo esc_html($field_config['label']); ?>
+            </label>
+            <input
+                type="<?php echo esc_attr($field_config['type']); ?>"
+                name="<?php echo esc_attr($field_name); ?>"
+                id="<?php echo esc_attr($field_name); ?>"
+                value="<?php echo esc_attr($value); ?>"
+                class="widefat"
+            >
+        </p>
+        <?php
     }
 }
-add_action('save_post', 'car_save_meta');
+
+/**
+ * Saves the car meta box fields after validating nonce and permissions.
+ *
+ * @param int $post_id Current post ID.
+ */
+function shams_save_car_meta($post_id)
+{
+    if (! isset($_POST['shams_car_meta_nonce']) || ! wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['shams_car_meta_nonce'])), 'shams_save_car_meta')) {
+        return;
+    }
+
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+        return;
+    }
+
+    if (! current_user_can('edit_post', $post_id)) {
+        return;
+    }
+
+    foreach (shams_get_car_meta_fields() as $field_name => $field_config) {
+        if (! isset($_POST[$field_name])) {
+            continue;
+        }
+
+        $raw_value = wp_unslash($_POST[$field_name]);
+        $value = call_user_func($field_config['sanitize_callback'], $raw_value);
+
+        update_post_meta($post_id, $field_config['meta_key'], $value);
+    }
+}
+add_action('save_post_cars', 'shams_save_car_meta');
+
+
+// Handle the Form Submission
+add_action('admin_post_nopriv_shams_submit_order', 'shams_process_order');
+add_action('admin_post_shams_submit_order', 'shams_process_order');
+
+function shams_process_order() {
+    // 1. Verify Security
+    if (!isset($_POST['order_security']) || !wp_verify_nonce($_POST['order_security'], 'shams_order_nonce')) {
+        wp_die('Security check failed');
+    }
+
+    // 2. Get Data
+    $car_id = absint($_POST['car_id']);
+    $name   = sanitize_text_field($_POST['user_name']);
+
+    // 3. The Logic: Send user to your Thank You page
+    // (In a real app, we would save this to the DB here)
+    wp_redirect(home_url('/thank-you-order/'));
+    exit;
+}
