@@ -185,18 +185,59 @@ add_action('save_post_cars', 'shams_save_car_meta');
 add_action('admin_post_nopriv_shams_submit_order', 'shams_process_order');
 add_action('admin_post_shams_submit_order', 'shams_process_order');
 
-function shams_process_order() {
-    // 1. Verify Security
-    if (!isset($_POST['order_security']) || !wp_verify_nonce($_POST['order_security'], 'shams_order_nonce')) {
+/**
+ * Processes the public order form and emails the dealership.
+ */
+function shams_process_order()
+{
+    if (
+        ! isset($_POST['order_security']) ||
+        ! wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['order_security'])), 'shams_order_nonce')
+    ) {
         wp_die('Security check failed');
     }
 
-    // 2. Get Data
-    $car_id = absint($_POST['car_id']);
-    $name   = sanitize_text_field($_POST['user_name']);
+    $car_id = isset($_POST['car_id']) ? absint($_POST['car_id']) : 0;
+    $name = isset($_POST['user_name']) ? sanitize_text_field(wp_unslash($_POST['user_name'])) : '';
+    $email = isset($_POST['user_email']) ? sanitize_email(wp_unslash($_POST['user_email'])) : '';
 
-    // 3. The Logic: Send user to your Thank You page
-    // (In a real app, we would save this to the DB here)
+    if (! $car_id || '' === $name || ! is_email($email)) {
+        wp_die('Please submit a valid order request.');
+    }
+
+    $car_title = get_the_title($car_id);
+    $car_price = get_post_meta($car_id, '_car_price', true);
+    $formatted_price = $car_price ? '$' . number_format((int) $car_price) : 'Contact for Price';
+    $brand_terms = get_the_terms($car_id, 'brand');
+    $brands = (! empty($brand_terms) && ! is_wp_error($brand_terms))
+        ? implode(', ', wp_list_pluck($brand_terms, 'name'))
+        : 'Unbranded';
+
+    $recipient = get_option('admin_email');
+    $subject = sprintf('New Car Order Request: %s', $car_title ? $car_title : 'Vehicle Inquiry');
+    $message = implode(
+        "\n",
+        array(
+            'A customer submitted a car order request.',
+            '',
+            'Customer name: ' . $name,
+            'Customer email: ' . $email,
+            'Car: ' . ($car_title ? $car_title : 'Unknown vehicle'),
+            'Brand: ' . $brands,
+            'Price: ' . $formatted_price,
+            'Vehicle link: ' . get_permalink($car_id),
+            '',
+            'Submitted from: ' . home_url('/'),
+        )
+    );
+
+    $headers = array(
+        'Content-Type: text/plain; charset=UTF-8',
+        'Reply-To: ' . $name . ' <' . $email . '>',
+    );
+
+    wp_mail($recipient, $subject, $message, $headers);
+
     wp_redirect(home_url('/thank-you-order/'));
     exit;
 }

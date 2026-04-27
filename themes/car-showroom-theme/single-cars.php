@@ -1,41 +1,41 @@
 <?php get_header(); ?>
 
-<div class="container" style="margin-top: 50px;">
+<div class="container car-detail">
     <?php if (have_posts()) : while (have_posts()) : the_post(); 
         $price = get_post_meta(get_the_ID(), '_car_price', true);
     ?>
-        <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 50px;">
+        <div class="car-detail__layout">
             
-            <div>
-                <?php the_post_thumbnail('large', array('style' => 'width:100%; border-radius:10px;')); ?>
-                <div style="margin-top: 20px;">
+            <div class="car-detail__content">
+                <?php the_post_thumbnail('large', array('class' => 'car-detail__image')); ?>
+                <div class="car-detail__copy">
                     <?php the_content(); ?>
                 </div>
             </div>
 
-            <div style="background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); height: fit-content;">
-                <h1 style="margin-top:0;"><?php the_title(); ?></h1>
-                <p style="font-size: 24px; color: #e74c3c; font-weight: bold;">$<?php echo number_format($price); ?></p>
+            <aside class="car-detail__sidebar">
+                <h1 class="car-detail__title"><?php the_title(); ?></h1>
+                <p class="car-detail__price">$<?php echo number_format($price); ?></p>
                 
-                <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+                <hr class="car-detail__divider">
 
-                <h3>Place an Order</h3>
-                <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post">
+                <h3 class="car-detail__form-title">Place an Order</h3>
+                <form class="car-detail__form" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post">
                     <?php wp_nonce_field('shams_order_nonce', 'order_security'); ?>
                     <input type="hidden" name="action" value="shams_submit_order">
                     <input type="hidden" name="car_id" value="<?php the_ID(); ?>">
 
-                    <div style="margin-bottom: 15px;">
-                        <input type="text" name="user_name" placeholder="Full Name" required style="width:100%; padding:10px; border:1px solid #ddd;">
+                    <div class="car-detail__field">
+                        <input class="car-detail__input" type="text" name="user_name" placeholder="Full Name" required>
                     </div>
-                    <div style="margin-bottom: 15px;">
-                        <input type="email" name="user_email" placeholder="Email Address" required style="width:100%; padding:10px; border:1px solid #ddd;">
+                    <div class="car-detail__field">
+                        <input class="car-detail__input" type="email" name="user_email" placeholder="Email Address" required>
                     </div>
-                    <button type="submit" style="width:100%; background: #2c3e50; color: white; padding: 15px; border: none; cursor: pointer; font-weight: bold;">
+                    <button class="car-detail__submit" type="submit">
                         Confirm Interest
                     </button>
                 </form>
-            </div>
+            </aside>
         </div>
     <?php endwhile; endif; ?>
 </div>

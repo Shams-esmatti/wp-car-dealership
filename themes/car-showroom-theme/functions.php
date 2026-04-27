@@ -5,6 +5,7 @@
 function shams_showroom_setup()
 {
     add_theme_support('post-thumbnails');
+    add_theme_support('title-tag');
     add_image_size('car-thumbnail', 600, 400, true);
 }
 add_action('after_setup_theme', 'shams_showroom_setup');
